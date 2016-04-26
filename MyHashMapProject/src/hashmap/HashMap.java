@@ -3,14 +3,17 @@ package hashmap;
 public class HashMap<K, V>
 {
   Object[] elements;
-
+  // threshold = loadFactor * maxSize;
+  double loadFactor = 0.75;
+  int size = 0;
+  
   public HashMap()
   {
-    elements = new Object[15];
+    elements = new Object[16];
   }
 
   @SuppressWarnings("unchecked")
-  public void put(K key, V value)
+  private void put (K key, V value, Object[] backingArray)
   {
     // 1. hash it
     // 2. get an index
@@ -18,23 +21,70 @@ public class HashMap<K, V>
 
     int hashCode = key.hashCode();
 
-    int index = Math.abs(hashCode % elements.length);
+    int index = Math.abs(hashCode % backingArray.length);
 
     Entry<K, V> entry = new Entry<>(hashCode, key, value);
 
-    if (elements[index] == null)
+    if (backingArray[index] == null)
     {
-      elements[index] = entry;
+      backingArray[index] = entry;
     } else
     {
-      Entry<K, V> node = (Entry<K, V>) elements[index];
+      Entry<K, V> node = (Entry<K, V>) backingArray[index];
       while (node.getNext() != null)
       {
         node = node.getNext();
       }
       node.setNext(entry);
     }
+    size++;
+    
+    if (shouldGrowHashMap(backingArray))
+    {
+      System.out.println("Before: Growing hashmap, max size is: " + elements.length);
+      growHashMap();
+      System.out.println("After:  Growing hashmap, max size is: " + elements.length);
+    }
+  }
+  
+  public void put(K key, V value)
+  {
+    put(key, value, elements);
+  }
 
+  @SuppressWarnings("unchecked")
+  private void growHashMap()
+  {
+    // 1. create a new backing object array (with double the size of the old one)
+    // 2. populate the new backing object array with existing elements
+    // 3. assign the old backing object array to point to the new one
+    
+    Object[] newElements = new Object[elements.length * 2];
+    size=0;
+    
+    for (int i=0; i<elements.length; i++)
+    {
+      while (elements[i] != null)
+      {
+        Entry<K, V> entry = (Entry<K,V>) elements[i];
+        put(entry.getKey(), entry.getValue(), newElements);
+        elements[i] = entry.getNext();
+      }
+    }
+    
+    elements = newElements;
+  }
+
+  private boolean shouldGrowHashMap(Object[] backingArray)
+  {
+    if (size > (loadFactor * backingArray.length))
+    {
+      return true;
+    }
+    else
+    {
+      return false;
+    }
   }
 
   @SuppressWarnings("unchecked")
@@ -97,6 +147,7 @@ public class HashMap<K, V>
             {
               prev.setNext(node.getNext());
             }
+            size--;
             return valueToReturn;
           }
         }
